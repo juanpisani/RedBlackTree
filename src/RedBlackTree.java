@@ -1,14 +1,16 @@
+import java.util.LinkedList;
 import java.util.List;
 
 public class RedBlackTree<K extends Comparable<K>, V> {
-    static final boolean RED = true;
-    static final boolean BLACK = false;
+    private static final boolean RED = true;
+    private static final boolean BLACK = false;
 
-    Node head;
+    private Node head;
     private int size;
-    Node lastAdded;
+    private Node lastAdded;
 
     class Node{
+
         boolean color;
         K key;
         V value;
@@ -16,17 +18,33 @@ public class RedBlackTree<K extends Comparable<K>, V> {
         Node right;
         Node father;
 
-        Node(K key, V value) {
-            this.color = RED;
+        public Node(K key, V value, Node father) {
             this.key = key;
             this.value = value;
+            this.father = father;
+            this.color = RED;
         }
 
         Node getUncle() {
-            if (father != null && father.father != null && father.left != null && father.right != null) {
+            if (father != null && father.father != null && father.father.left != null && father.father.right != null) {
                 return father.father.left == father ? father.father.right : father.father.left;
             }
+
             return null;
+        }
+
+        boolean getUncleColour() {
+            if (father != null && father.father != null && father.father.left != null && father.father.right != null) {
+                return father.father.left == father ? father.father.right.color : father.father.left.color;
+            }
+
+            return BLACK;
+        }
+
+        @Override
+        public String toString() {
+            if (color == RED) return "\033[0;31m"+ value;
+            return "\033[0;30m" + value;
         }
     }
 
@@ -34,44 +52,97 @@ public class RedBlackTree<K extends Comparable<K>, V> {
 
     public boolean add(K key, V value){
         int currentSize = size;
-        head = add(head, key, value);
+        head = add(head, null, key, value);
         balanceAdd(lastAdded);
         return currentSize < size;
     }
 
-    private void balanceAdd(Node node) {
-        Node uncle = node.getUncle();
+    private Node add(Node node, Node father, K key, V value) {
+        if (node == null){
+            node = new Node(key, value, father);
+            lastAdded = node;
+            size++;
+        }
+        else if (node.key.compareTo(key) > 0) {
+            node.left = add(node.left, node, key, value);
+        }
+        else if (node.key.compareTo(key) < 0){
+            node.right =  add(node.right, node, key, value);
+        }
+        return node;
+    }
+    private void balanceAdd (Node node){
+        balanceAddr(node);
+    }
+    private Node balanceAddr(Node node) {
 
-        if (uncle != null && uncle.color == RED){
+
+        if (node == head) {
+            node.color = BLACK;
+        }
+
+        if (node.getUncleColour() == RED) {
             node.father.color = BLACK;
-            uncle.color = BLACK;
+            node.getUncle().color = BLACK;
             node.father.father.color = RED;
+            node.father.father = balanceAddr(node.father.father);
+
+        } else{
+            if (node.father != null && node.father.father != null) {
+                //left left case
+                if (node == node.father.left && node.father == node.father.father.left) {
+                    node.father.father = rotateRight(node.father.father);
+
+                    //swap colors
+                    boolean gColor = node.father.father.color;
+                    node.father.father.color = node.father.color;
+                    node.father.color = gColor;
+                }
+                //left right case
+                else if (node == node.father.right && node.father == node.father.father.left) {
+                    node.father = rotateLeft(node.father);
+
+                    node.father.father = rotateRight(node.father.father);
+                    //swap colors
+                    boolean gColor = node.father.father.color;
+                    node.father.father.color = node.father.color;
+                    node.father.color = gColor;
+                }
+                //right right case
+                else if (node == node.father.right && node.father == node.father.father.right) {
+                    node.father.father = rotateLeft(node.father.father);
+
+                    //swap colors
+                    boolean gColor = node.father.father.color;
+                    node.father.father.color = node.father.color;
+                    node.father.color = gColor;
+                }
+                //right left case
+                else if (node == node.father.left && node.father == node.father.father.right) {
+                    node.father = rotateRight(node.father);
+
+                    //swap colors
+                    boolean gColor = node.father.father.color;
+                    node.father.father.color = node.father.color;
+                    node.father.color = gColor;
+                }
+            }
+
         }
 
-        if (uncle != null && uncle.color == BLACK && node.father.right == node){
-            node.father = rotateLeft(node.father);
-        }
-
-        if (uncle != null && uncle.color == BLACK && node.father.left == node){
-            rotateRight(node.father.father);
-
-            //switch color
-            boolean fatherColor = node.father.color;
-            node.father.color = node.father.right.color;
-            node.father.right.color = fatherColor;
-        }
-
+        return node;
     }
 
     private Node rotateRight(Node node) {
-        Node left = node.left;
-        Node right = left.right;
+        Node x = node.left;
+        Node T2 = x.right;
 
         // Perform rotation
-        left.right = node;
-        node.left = right;
+        x.right = node;
+        node.left = T2;
 
-        return left;
+        // Return new root
+        return x;
     }
 
     private Node rotateLeft(Node node) {
@@ -85,23 +156,6 @@ public class RedBlackTree<K extends Comparable<K>, V> {
         // Return new root
         return y;
     }
-
-    private Node add(Node node, K key, V value) {
-        if (node == null){
-            size++;
-            Node newNode = new Node(key, value);
-            lastAdded = newNode;
-            return newNode;
-        }
-        if (key.compareTo(node.key) > 0){
-            return add(node.right, key, value);
-        }
-        if (key.compareTo(node.key) < 0){
-            return add(node.left, key, value);
-        }
-        return node;
-    }
-
 
     public boolean remove(K key){
         return true;
@@ -134,4 +188,44 @@ public class RedBlackTree<K extends Comparable<K>, V> {
    public boolean save(){
         return true;
    }
+
+    public void printByLevels() {
+
+        if(head == null) return;
+        LinkedList<Node> q = new LinkedList<>();
+        q.addLast(head);
+        int nodesOnLevel = q.size();
+        while(nodesOnLevel != 0)
+        {
+            nodesOnLevel = q.size();
+            while(nodesOnLevel > 0)
+            {
+                Node node = q.removeFirst();
+                System.out.print(node + " ");
+                if(node.left != null)
+                    q.addLast(node.left);
+                if(node.right != null)
+                    q.addLast(node.right);
+                nodesOnLevel--;
+            }
+            System.out.println();
+            nodesOnLevel = q.size();
+        }
+
+
+    }
+
+
+    public static void main(String[] args) {
+        RedBlackTree<Integer, String> tree = new RedBlackTree<>();
+        tree.add(6, "6");
+        tree.add(7, "7");
+        tree.add(5, "5");
+        tree.add(4, "4");
+        tree.add(3, "3");
+
+        tree.printByLevels();
+        System.out.println();
+    }
+
 }
